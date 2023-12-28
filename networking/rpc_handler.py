@@ -13,9 +13,9 @@ class BitcoinRpc:
         self.port = port
         self.url = f'http://{host}:{port}/'
         self.headers = {'content-type': 'application/json'}
-        #self.ssh_tunnel = sshHandler()
-        #self.ssh_tunnel.create_tunnel()
-        #atexit.register(self.ssh_tunnel.kill_tunnel)
+        self.ssh_tunnel = sshHandler()
+        self.ssh_tunnel.create_tunnel()
+        atexit.register(self.ssh_tunnel.kill_tunnel)
 
     def load_env_vars(self):
         script_dir = dirname(__file__)
