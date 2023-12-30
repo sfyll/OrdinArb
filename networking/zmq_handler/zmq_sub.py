@@ -1,6 +1,6 @@
 import struct
 
-from networking.zmq_handler.zmq_objects import TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber 
+from networking.zmq_handler.zmq_objects import TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber, Label 
 
 """
     ZMQ example using python3's asyncio
@@ -77,8 +77,9 @@ class ZMQHandler():
         elif topic == b"sequence":
             hash = body[:32].hex()
             label = chr(body[32])
+            label_enum = Label.from_char(label)
             mempool_sequence = None if len(body) != 32+1+8 else struct.unpack("<Q", body[32+1:])[0]
-            return SequenceNumber(sequence, hash, label, mempool_sequence)
+            return SequenceNumber(sequence, hash, label_enum, mempool_sequence)
         else:
             raise ValueError("Unknown topic")
 
