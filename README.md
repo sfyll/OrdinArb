@@ -41,3 +41,12 @@ Current analysis includes:
 
 1. **Run analyze.py**:
 ```python analyze.py```
+
+## Analyzing inscriptions
+
+Use the go script in inscriptionparsing/ to parse the raw transactions from the dump dir and print the inscriptions to the console.
+There's some light parsing going on but nothing fancy yet.
+
+Good to know:
+* Inscriptions have an inscriptionType field, that specs the format of the body (e.g. text/plain; charset=utf-8 or text/html; charset=utf-8)
+* Inscriptions have an inscriptionBody field, that contains the actual inscription. This can be decoded by using the spec in the inscriptionType field.
