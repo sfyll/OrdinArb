@@ -1,4 +1,5 @@
 
+from encoding.decode import decode
 from main import DUMP_FILE_PATH
 
 if __name__ == "__main__":
@@ -19,3 +20,8 @@ if __name__ == "__main__":
     for i in range(10):
         print("Line {} has length {}".format(lines[i][0], len(lines[i][1])))
 
+    # deserialize longest line
+    decoded = decode(lines[0][1])
+    deserialzed = decoded.deserialize()
+    print("Deserialized longest line:")
+    print(deserialzed)
