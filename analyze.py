@@ -2,6 +2,15 @@
 from encoding.decode import decode
 from main import DUMP_FILE_PATH
 
+
+def process_line(line):
+    print("Line {} has length {}".format(line[0], len(line[1])))
+    if input("See line content? (y/n)") == "y":
+        decoded = decode(line[1])
+        deserialized = decoded.deserialize()
+        print("Deserialized: {}".format(deserialized))
+
+
 if __name__ == "__main__":
     print("Analyzing dump file: {}".format(DUMP_FILE_PATH))
 
@@ -9,7 +18,7 @@ if __name__ == "__main__":
     file = open(DUMP_FILE_PATH, "r")
 
     # read file
-    lines = list(enumerate(file.readlines()))
+    lines = list(enumerate([line.strip() for line in file.readlines()]))
     print("Read {} lines".format(len(lines)))
 
     # sort lines by length
@@ -18,10 +27,13 @@ if __name__ == "__main__":
     # print longest line lengths
     print("Longest lines:")
     for i in range(10):
-        print("Line {} has length {}".format(lines[i][0], len(lines[i][1])))
+        line_number, line = lines[i]
+        print("Line {} has length {}".format(line_number, len(line)))
+        decoded = decode(line)
+        deserialized = decoded.deserialize()
+        print(deserialized, file=open(f"line_{line_number}_deserialized.txt", "w"))
 
-    # deserialize longest line
-    decoded = decode(lines[0][1])
-    deserialzed = decoded.deserialize()
-    print("Deserialized longest line:")
-    print(deserialzed)
+    input("Press any key to see next line...")
+    for line in lines:
+        process_line(line)
+        input("Press any key to see next line...")

@@ -9,32 +9,35 @@ from bitcoin.core import CTransaction
 class RawTransaction:
     def __init__(self, sequence: int, raw_tx: str):
         self.sequence = sequence
-        self.raw_tx = raw_tx
+        self.tx_hash = raw_tx
 
     def encode(self):
-        return "RawTransaction(sequence={}, raw_tx={})".format(self.sequence, self.raw_tx)
+        return "RawTransaction(sequence={}, raw_tx={})".format(self.sequence, self.tx_hash)
 
     def decode(self, encoded):
         sequence, raw_tx = encoded.split(",")
         self.sequence = int(sequence.split("=")[1])
-        self.raw_tx = raw_tx.split("=")[1][:-1]
+        self.tx_hash = raw_tx.split("=")[1][:-1]
 
     def deserialize(self):
-        return CTransaction.deserialize(bytes.fromhex(self.raw_tx))
+        return CTransaction.deserialize(bytes.fromhex(self.tx_hash))
 
 
 class TransactionHash:
-    def __init__(self, sequence: int, raw_tx: str):
+    def __init__(self, sequence: int, tx_hash: str):
         self.sequence = sequence
-        self.raw_tx = raw_tx
+        self.tx_hash = tx_hash
 
     def encode(self):
-        return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.raw_tx)
+        return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.tx_hash)
 
     def decode(self, encoded):
         sequence, raw_tx = encoded.split(",")
         self.sequence = int(sequence.split("=")[1])
-        self.raw_tx = raw_tx.split("=")[1][:-1]
+        self.tx_hash = raw_tx.split("=")[1][:-1]
+
+    def deserialize(self):
+        return self.tx_hash
 
 
 def decode(encoded: str):
@@ -59,6 +62,6 @@ if __name__ == "__main__":
     raw_tx = decode(RAW_TRANSACTION_TEST)
     deserialized_tx = raw_tx.deserialize()
 
-    print("transaction hash: {}".format(tx_hash.raw_tx))
-    print("raw transaction: {}".format(raw_tx.raw_tx))
+    print("transaction hash: {}".format(tx_hash.tx_hash))
+    print("raw transaction: {}".format(raw_tx.tx_hash))
     print("deserialized transaction: {}".format(deserialized_tx))
