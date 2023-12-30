@@ -2,6 +2,8 @@ import struct
 
 from networking.zmq_handler.zmq_objects import BlockHash, TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber, Label
 
+from networking.zmq_handler.zmq_handlers import PrintHandler, WriteToFileHandler, MultiHandler
+
 """
     ZMQ example using python3's asyncio
 
@@ -26,7 +28,6 @@ import asyncio
 import zmq
 import zmq.asyncio
 import signal
-import struct
 import sys
 
 if (sys.version_info.major, sys.version_info.minor) < (3, 5):
@@ -37,7 +38,8 @@ port = 28332
 
 
 class ZMQHandler():
-    def __init__(self):
+    def __init__(self, message_handler=PrintHandler()):
+        self.message_handler = message_handler
         self.loop = asyncio.get_event_loop()
         self.zmqContext = zmq.asyncio.Context()
         self.sequence = 0
@@ -55,7 +57,7 @@ class ZMQHandler():
         decoded_message = self.decode_message(topic, body, seq)
 
         # Process the decoded message
-        print(decoded_message)
+        self.message_handler.handle(decoded_message)
 
         # Schedule the next receive
         asyncio.ensure_future(self.handle())

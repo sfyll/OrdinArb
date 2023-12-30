@@ -4,8 +4,10 @@ import time
 
 
 class sshHandler:
-    def __init__(self, host: str = "ordinArb", port_number: int = 8332):
-        self.host = host
+    def __init__(self, host_name: str = "ordinArb", port_number: int = 8332):
+        host_name = host_name if host_name else "ordinArb"
+        port_number = port_number if port_number else 8332
+        self.host = host_name
         self.port_number = port_number
 
     def find_ssh_tunnel_process(self):
@@ -48,9 +50,15 @@ class sshHandler:
 
 # Main code to handle user input
 if __name__ == "__main__":
+
+    # gather user input
     action = input(
         "Do you want to 'create' or 'kill' the SSH tunnel? ").strip().lower()
-    executor = sshHandler()
+    host_name = input(
+        "Enter the host name (default is 'ordinArb'): ").strip().lower()
+    port_number = input(
+        "Enter the port number (default is 8332): ").strip().lower()
+    executor = sshHandler(host_name=host_name, port_number=port_number)
     if action == 'create':
         executor.create_tunnel()
     elif action == 'kill':
