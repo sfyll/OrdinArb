@@ -31,7 +31,8 @@ if __name__ == "__main__":
         print("Line {} has length {}".format(line_number, len(line)))
         decoded = decode(line)
         deserialized = decoded.deserialize()
-        print(deserialized, file=open(f"line_{line_number}_deserialized.txt", "w"))
+        print(deserialized, file=open(
+            f"line_{line_number}_deserialized.txt", "w"))
 
     input("Press any key to see next line...")
     for line in lines:
