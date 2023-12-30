@@ -1,6 +1,6 @@
 import struct
 
-from networking.zmq_handler.zmq_objects import TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber, Label 
+from networking.zmq_handler.zmq_objects import BlockHash, TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber, Label
 
 """
     ZMQ example using python3's asyncio
@@ -35,6 +35,7 @@ if (sys.version_info.major, sys.version_info.minor) < (3, 5):
 
 port = 28332
 
+
 class ZMQHandler():
     def __init__(self):
         self.loop = asyncio.get_event_loop()
@@ -52,10 +53,10 @@ class ZMQHandler():
     async def handle(self):
         topic, body, seq = await self.zmqSubSocket.recv_multipart()
         decoded_message = self.decode_message(topic, body, seq)
-                
+
         # Process the decoded message
         print(decoded_message)
-        
+
         # Schedule the next receive
         asyncio.ensure_future(self.handle())
 
@@ -64,21 +65,23 @@ class ZMQHandler():
         sequence = -1  # Default to -1 if sequence cannot be unpacked
         if len(seq) == 4:
             sequence = struct.unpack('<I', seq)[0]
-        
+
         # Decode the message based on the topic
         if topic == b"hashblock":
             return BlockHash(sequence=sequence, block_hash=body.hex())
         elif topic == b"hashtx":
             return TransactionHash(sequence=sequence, tx_hash=body.hex())
         elif topic == b"rawblock":
-            return RawBlock(sequence, body[:80].hex())  # Assuming the header is 80 bytes
+            # Assuming the header is 80 bytes
+            return RawBlock(sequence, body[:80].hex())
         elif topic == b"rawtx":
             return RawTransaction(sequence, body.hex())
         elif topic == b"sequence":
             hash = body[:32].hex()
             label = chr(body[32])
             label_enum = Label.from_char(label)
-            mempool_sequence = None if len(body) != 32+1+8 else struct.unpack("<Q", body[32+1:])[0]
+            mempool_sequence = None if len(
+                body) != 32+1+8 else struct.unpack("<Q", body[32+1:])[0]
             return SequenceNumber(sequence, hash, label_enum, mempool_sequence)
         else:
             raise ValueError("Unknown topic")
@@ -92,5 +95,7 @@ class ZMQHandler():
         self.loop.stop()
         self.zmqContext.destroy()
 
-daemon = ZMQHandler()
-daemon.start()
+
+if __name__ == "__main__":
+    daemon = ZMQHandler()
+    daemon.start()

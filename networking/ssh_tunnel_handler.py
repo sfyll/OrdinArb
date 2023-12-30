@@ -2,6 +2,7 @@ import subprocess
 import psutil
 import time
 
+
 class sshHandler:
     def __init__(self, host: str = "ordinArb", port_number: int = 8332):
         self.host = host
@@ -28,7 +29,7 @@ class sshHandler:
         if self.find_ssh_tunnel_process() is None:
             try:
                 subprocess.Popen(ssh_command)
-                time.sleep(5)  
+                time.sleep(5)
                 print("SSH tunnel established.")
             except Exception as e:
                 print(f"Error establishing SSH tunnel: {e}")
@@ -44,9 +45,11 @@ class sshHandler:
         else:
             print("No SSH tunnel was running.")
 
+
 # Main code to handle user input
 if __name__ == "__main__":
-    action = input("Do you want to 'create' or 'kill' the SSH tunnel? ").strip().lower()
+    action = input(
+        "Do you want to 'create' or 'kill' the SSH tunnel? ").strip().lower()
     executor = sshHandler()
     if action == 'create':
         executor.create_tunnel()
@@ -54,4 +57,3 @@ if __name__ == "__main__":
         executor.kill_tunnel()
     else:
         print("Invalid action. Use 'create' or 'kill'.")
-

@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 from enum import Enum
 
+
 class Label(Enum):
     BLOCK_CONNECTED = 'C'
     BLOCK_DISCONNECTED = 'D'
@@ -19,6 +20,7 @@ class Label(Enum):
         }
         return label_mapping.get(char, None)
 
+
 class ZMQMessage(ABC):
 
     def __str__(self):
@@ -32,6 +34,7 @@ class ZMQMessage(ABC):
         # This method should be implemented by all subclasses to return the type of message
         pass
 
+
 @dataclass
 class TransactionHash(ZMQMessage):
     sequence: int
@@ -39,6 +42,7 @@ class TransactionHash(ZMQMessage):
 
     def message_type(self):
         return "Transaction Hash"
+
 
 @dataclass
 class BlockHash(ZMQMessage):
@@ -48,6 +52,7 @@ class BlockHash(ZMQMessage):
     def message_type(self):
         return "Block Hash"
 
+
 @dataclass
 class RawTransaction(ZMQMessage):
     sequence: int
@@ -56,6 +61,7 @@ class RawTransaction(ZMQMessage):
     def message_type(self):
         return "Raw Transaction"
 
+
 @dataclass
 class RawBlock(ZMQMessage):
     sequence: int
@@ -63,6 +69,7 @@ class RawBlock(ZMQMessage):
 
     def message_type(self):
         return "Raw Block"
+
 
 @dataclass
 class SequenceNumber(ZMQMessage):
@@ -73,5 +80,3 @@ class SequenceNumber(ZMQMessage):
 
     def message_type(self):
         return "Sequence Number"
-    
-
