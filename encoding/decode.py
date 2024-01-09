@@ -40,6 +40,27 @@ class TransactionHash:
         return self.tx_hash
 
 
+class SequenceHash:
+    def __init__(self, sequence: int, tx_hash: str, label: str, mempool_sequence: int):
+        self.sequence = sequence
+        self.tx_hash = tx_hash
+        self.label = label
+        self.mempool_sequence = mempool_sequence
+
+    def encode(self):
+        return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.tx_hash)
+
+    def decode(self, encoded):
+        sequence, raw_tx, label, mempool_sequence = encoded.split(",")
+        self.sequence = int(sequence.split("=")[1])
+        self.tx_hash = raw_tx.split("=")[1][:-1]
+        self.label = label.split("=")[1]
+        self.mempool_sequence = int(mempool_sequence.split("=")[1][:-1])
+
+    def deserialize(self):
+        return self.tx_hash
+
+
 def decode(encoded: str):
     if encoded.startswith("RawTransaction"):
         tx = RawTransaction(0, "")
@@ -49,6 +70,12 @@ def decode(encoded: str):
         tx = TransactionHash(0, "")
         tx.decode(encoded)
         return tx
+    elif encoded.startswith("SequenceNumber"): 
+        return ""
+    elif encoded.startswith("BlockHash"):
+        return ""
+    elif encoded.startswith("RawBlock"):
+        return ""
     else:
         raise Exception("Unknown type: {}".format(encoded))
 
