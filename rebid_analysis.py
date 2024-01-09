@@ -1,10 +1,11 @@
-from typing import List
+from typing import Dict, List
 import os
 from encoding.decode import decode
 
 from dataclasses import dataclass, field
 
-from bitcoin.core import CTransaction, CTxIn
+from bitcoin.core import CTransaction, CTxIn, CTxInWitness
+from bitcoin.rpc import Proxy
 
 @dataclass
 class TransactionData:
@@ -21,9 +22,11 @@ class TransactionData:
 
 class MempoolAnalyzer:
     def __init__(self, file_path):
-        self.file_path = file_path
+        self.client = Proxy('127.0.0.1', 8332, os.path.join(current_dir, "networking/.env"))
+        self.file_path = os.path.join(file_path, "data/mempool_drop.txt")
         # Using a dictionary to store transactions with outputs as keys
         self.transactions = {}
+        self.value_per_prevout_cache: Dict[tuple, int] = {}
 
     def process_file(self):
         with open(self.file_path, 'r') as file:
@@ -50,7 +53,8 @@ class MempoolAnalyzer:
         if key not in self.transactions:
             self.transactions[key] = TransactionData(original_tx=transaction)
         elif self.can_update_gas_fee(transaction.vin):
-            gas_fee = self.extract_gas_fee(transaction)     # Assuming you have a method to extract gas fee
+            input_value = self.extract_input_value(transaction)     # Assuming you have a method to extract gas fee
+            gas_fee = input_value - transaction.vout.nValue
             self.transactions[key].add_update(transaction, gas_fee)
 
     def extract_outputs(self, transaction: CTransaction):
@@ -60,6 +64,19 @@ class MempoolAnalyzer:
         for input in inputs:
             if not input.is_final:
                 return True
+    
+    #Please note this assume inputs are fixed.
+    def extract_input_value(self, transaction: CTransaction):
+        input_sum_value: int = 0
+        for input in transaction.vin:
+            input: CTxIn
+            if (input.prevout.hash, input.prevout.n) in self.value_per_prevout_cache:
+                continue
+            else:
+                previous_transaction: CTransaction = self.client.getrawtransaction(input.prevout.hash).deserialize()
+                previous_transaction_referred_input = previous_transaction.vout.nValue
+                input_sum_value += previous_transaction_referred_input
+                self.value_per_prevout_cache[(input.prevout.hash, input.prevout.n)] = previous_transaction_referred_input
 
     def update_transactions(self, outputs, transaction):
         # Key for the dictionary is a tuple of outputs
@@ -75,8 +92,8 @@ class MempoolAnalyzer:
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    DUMP_FILE_PATH = os.path.join(current_dir, "data/mempool_drop.txt")
-    analyzer = MempoolAnalyzer(DUMP_FILE_PATH)
+    base_file_path = os.path.join(current_dir, "data/mempool_drop.txt")
+    analyzer = MempoolAnalyzer(base_file_path)
     analyzer.process_file()
     print(analyzer.get_transactions())
 
