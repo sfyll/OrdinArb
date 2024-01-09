@@ -1,9 +1,11 @@
-
+import os
 from encoding.decode import decode
-from main import DUMP_FILE_PATH
 
+# Get the directory of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-def process_line(line):
+# Default file name
+DUMP_FILE_PATH = "data/mempool_drop.txt"
     print("Line {} has length {}".format(line[0], len(line[1])))
     if input("See line content? (y/n)") == "y":
         decoded = decode(line[1])
