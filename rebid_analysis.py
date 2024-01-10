@@ -1,11 +1,12 @@
-from typing import Dict, List
+import hashlib
+from typing import Dict, List, Union
 import os
 from encoding.decode import decode
 
 from dataclasses import dataclass, field
 
-from bitcoin.core import CTransaction, CTxIn, CTxInWitness, CTxOut
-from bitcoin.rpc import Proxy
+from bitcoin.core import CTransaction, CTxIn, CTxInWitness, CTxOut, Hash, lx
+from bitcoin.rpc import Proxy 
 
 @dataclass
 class TransactionData:
@@ -18,43 +19,63 @@ class TransactionData:
        # self.timestamps.append(timestamp)
 
 
+@dataclass
+class TxMetaData:
+    txHash: str
+    size: int
+    vsize: int
+    weight: int
+    blockhash: str
+    confirmations: int
+    time: int
+    blocktime: int
+    tx: CTransaction
+
+
 class MempoolAnalyzer:
     def __init__(self, file_path):
         self.client = Proxy(btc_conf_file=os.path.join(current_dir, "networking/.env"))
         self.file_path = os.path.join(file_path, "data/mempool_drop.txt")
         # Using a dictionary to store transactions with outputs as keys
         self.transactions = {}
-        self.value_per_prevout_cache: Dict[tuple, int] = {}
+        self.value_per_prevout_cache: Dict[str, int] = {}
+        self.tx_meta_data_per_hash: Dict[str, TxMetaData] = {}
     
     #Assumes that the lines are ordered by arrival time
     def process_file(self):
         with open(self.file_path, 'r') as file:
             for idx, line in enumerate(file):
-                print(f"line {idx}")
                 self.process_line(line.strip())
 
     def process_line(self, line):
         decoded = decode(line)
         try:
-            transaction: CTransaction = decoded.deserialize()
+            transaction = decoded.deserialize()
         #hacky way to bypass non implemented stuff
         except AttributeError:
             return
         # Check if it's a raw transaction
         if self.is_raw_transaction(transaction):
             self.process_transaction(transaction)
+        elif self.is_hash_transaction(transaction):
+            print(transaction)
+        #    self.process_hash_transaction(transaction)
+        #else:
+        #    raise NotImplementedError
 
     def is_raw_transaction(self, transaction):
         # Implement logic to check if the transaction is a raw transaction
         return isinstance(transaction, CTransaction) 
+
+    def is_hash_transaction(self, transaction):
+        return isinstance(transaction, str) and len(transaction) == 64
     
     def process_transaction(self, transaction: CTransaction):
-        key = tuple(transaction.vin)
+        key = self.get_key_from_inputs(transaction.vin)
         #timestamp = self.extract_timestamp(transaction)  # Assuming you have a method to extract timestamp
-
+        
         if key not in self.transactions:
             if self.can_update_gas_fee(transaction.vin):
-                print(key)
                 input_value = self.extract_input_value(transaction)     # Assuming you have a method to extract gas fee
                 gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
                 self.transactions[key] = TransactionData(original_tx=transaction, gas_fees=[gas_fee])
@@ -63,7 +84,38 @@ class MempoolAnalyzer:
             input_value = self.extract_input_value(transaction)     # Assuming you have a method to extract gas fee
             gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout) 
             self.transactions[key].add_update(gas_fee)
-            print(f"UPDATING RBF transaction with gas fee {gas_fee}")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"UPDATING RBF transaction with gas fee {gas_fee} !!!!")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+            print(f"------------------------------------------------------")
+    
+    def get_key_from_inputs(self, inputs: CTxIn):
+        concatenated_hashes = ''.join([input.prevout.hash.hex() + str(input.prevout.n) for input in inputs])
+        return hashlib.sha256(concatenated_hashes.encode()).hexdigest()
+
+    def get_key_from_input(self, prevout_hash: bytes, prevout_n: int):
+        return hashlib.sha256((prevout_hash.hex() + str(prevout_n)).encode()).hexdigest()
+    
+    def process_hash_transaction(self, transaction_hash: str):
+        #timestamp = self.extract_timestamp(transaction)  # Assuming you have a method to extract timestamp
+    
+        print(f"{transaction_hash}")
+
+        tx_meta_data = self.get_tx_meta_data(transaction_hash)
+
+        print(tx_meta_data)
+
+        raise
 
     def extract_outputs(self, transaction: CTransaction):
         return transaction.vout
@@ -80,15 +132,24 @@ class MempoolAnalyzer:
         input_sum_value: int = 0
         for input in transaction.vin:
             input: CTxIn
-            if (input.prevout.hash, input.prevout.n) in self.value_per_prevout_cache:
-                input_sum_value += self.value_per_prevout_cache[(input.prevout.hash, input.prevout.n)]   
-            else:
-                previous_transaction: CTransaction =  self.client.getrawtransaction(input.prevout.hash)
-                previous_transaction_referred_input = self.get_gas_fees_from_outputs(previous_transaction.vout) 
-                input_sum_value += previous_transaction_referred_input
-                self.value_per_prevout_cache[(input.prevout.hash, input.prevout.n)] = previous_transaction_referred_input
-
+            key = self.get_key_from_input(input.prevout.hash, input.prevout.n)
+            if not key in self.value_per_prevout_cache:
+                if not input.prevout.hash.hex() in self.tx_meta_data_per_hash:
+                    print("querying the node")
+                    print(f"{(input.prevout.hash.hex(), input.prevout.n)}")
+                    self.tx_meta_data_per_hash[input.prevout.hash.hex()] = self.get_tx_meta_data_from_hash(input.prevout.hash)
+                self.value_per_prevout_cache[key] = self.tx_meta_data_per_hash[input.prevout.hash.hex()].tx.vout[input.prevout.n].nValue 
+            input_sum_value += self.value_per_prevout_cache[key]   
         return input_sum_value
+    
+    def get_tx_meta_data_from_hash(self, tx_hash: Union[str, bytes]):
+        if isinstance(tx_hash, str): 
+            tx_data = self.client.getrawtransaction(lx(tx_hash), True)
+        elif isinstance(tx_hash, bytes):
+            tx_data = self.client.getrawtransaction(tx_hash, True)
+        tx_data["txHash"] = tx_data.pop("hash")
+
+        return TxMetaData(**tx_data)
 
     def get_gas_fees_from_outputs(self, outputs: tuple[CTxOut]) -> int:
         return sum(output.nValue for output in outputs)
