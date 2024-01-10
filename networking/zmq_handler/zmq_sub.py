@@ -1,5 +1,5 @@
 import struct
-
+from typing import List
 from networking.zmq_handler.zmq_objects import BlockHash, TransactionHash, RawBlock, RawTransaction, RawBlock, SequenceNumber, Label
 
 from networking.zmq_handler.zmq_handlers import PrintHandler, WriteToFileHandler, MultiHandler
@@ -38,18 +38,14 @@ port = 28332
 
 
 class ZMQHandler():
-    def __init__(self, message_handler=PrintHandler()):
+    def __init__(self, message_handler=PrintHandler(), sub_topic: List[str] = []):
         self.message_handler = message_handler
         self.loop = asyncio.get_event_loop()
         self.zmqContext = zmq.asyncio.Context()
         self.sequence = 0
         self.zmqSubSocket = self.zmqContext.socket(zmq.SUB)
         self.zmqSubSocket.setsockopt(zmq.RCVHWM, 0)
-        self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, "hashblock")
-        self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, "hashtx")
-        self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, "rawblock")
-        self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, "rawtx")
-        self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, "sequence")
+        [self.zmqSubSocket.setsockopt_string(zmq.SUBSCRIBE, topic) for topic in (sub_topic if sub_topic else ["hashblock", "hashtx", "rawblock", "rawtx", "sequence"])]
         self.zmqSubSocket.connect("tcp://127.0.0.1:%i" % port)
 
     async def handle(self):
@@ -67,7 +63,6 @@ class ZMQHandler():
         sequence = -1  # Default to -1 if sequence cannot be unpacked
         if len(seq) == 4:
             sequence = struct.unpack('<I', seq)[0]
-
         # Decode the message based on the topic
         if topic == b"hashblock":
             return BlockHash(sequence=sequence, block_hash=body.hex())
