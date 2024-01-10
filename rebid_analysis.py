@@ -4,6 +4,7 @@ import os
 from encoding.decode import decode
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from bitcoin.core import CTransaction, CTxIn, CTxInWitness, CTxOut, Hash, lx
 from bitcoin.rpc import Proxy 
@@ -12,11 +13,11 @@ from bitcoin.rpc import Proxy
 class TransactionData:
     original_tx: CTransaction
     gas_fees: List[int] = field(default_factory=list)  # Assuming gas fees are represented as integers
-    #timestamps: List[int] = field(default_factory=list)  # Assuming timestamps are Unix timestamps
+    timestamps: List[int] = field(default_factory=list)  # Assuming timestamps are Unix timestamps
 
-    def add_update(self, gas_fee: int, timestamp = None):
+    def add_update(self, gas_fee: int, timestamp):
         self.gas_fees.append(gas_fee)
-       # self.timestamps.append(timestamp)
+        self.timestamps.append(timestamp)
 
 
 @dataclass
@@ -44,7 +45,7 @@ class MempoolAnalyzer:
     #Assumes that the lines are ordered by arrival time
     def process_file(self):
         with open(self.file_path, 'r') as file:
-            for idx, line in enumerate(file):
+            for line in file:
                 self.process_line(line.strip())
 
     def process_line(self, line):
@@ -56,7 +57,7 @@ class MempoolAnalyzer:
             return
         # Check if it's a raw transaction
         if self.is_raw_transaction(transaction):
-            self.process_transaction(transaction)
+            self.process_transaction(transaction, decoded.timestamp.timestamp())
         elif self.is_hash_transaction(transaction):
             print(transaction)
         #    self.process_hash_transaction(transaction)
@@ -70,20 +71,19 @@ class MempoolAnalyzer:
     def is_hash_transaction(self, transaction):
         return isinstance(transaction, str) and len(transaction) == 64
     
-    def process_transaction(self, transaction: CTransaction):
+    def process_transaction(self, transaction: CTransaction, timestamp: int):
         key = self.get_key_from_inputs(transaction.vin)
-        #timestamp = self.extract_timestamp(transaction)  # Assuming you have a method to extract timestamp
-        
+
         if key not in self.transactions:
             if self.can_update_gas_fee(transaction.vin):
-                input_value = self.extract_input_value(transaction)     # Assuming you have a method to extract gas fee
+                input_value = self.extract_input_value(transaction)     
                 gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
-                self.transactions[key] = TransactionData(original_tx=transaction, gas_fees=[gas_fee])
+                self.transactions[key] = TransactionData(original_tx=transaction, gas_fees=[gas_fee], timestamps=[timestamp])
                 print(f"adding RBF transaction with gas fee {gas_fee} ")
         else:
-            input_value = self.extract_input_value(transaction)     # Assuming you have a method to extract gas fee
+            input_value = self.extract_input_value(transaction)     
             gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout) 
-            self.transactions[key].add_update(gas_fee)
+            self.transactions[key].add_update(gas_fee, timestamp)
             print(f"------------------------------------------------------")
             print(f"------------------------------------------------------")
             print(f"------------------------------------------------------")
