@@ -1,4 +1,5 @@
-
+from datetime import datetime
+from typing import Optional
 from bitcoin.core import CTransaction
 
 # Examples:
@@ -7,34 +8,38 @@ from bitcoin.core import CTransaction
 
 
 class RawTransaction:
-    def __init__(self, sequence: int, raw_tx: str):
+    def __init__(self, sequence: int, raw_tx: str , ts: Optional[datetime] = None):
         self.sequence = sequence
         self.tx_hash = raw_tx
+        self.timestamp = ts
 
     def encode(self):
         return "RawTransaction(sequence={}, raw_tx={})".format(self.sequence, self.tx_hash)
 
     def decode(self, encoded):
-        sequence, raw_tx = encoded.split(",")
+        sequence, raw_tx, ts = encoded.split(",")
         self.sequence = int(sequence.split("=")[1])
-        self.tx_hash = raw_tx.split("=")[1][:-1]
+        self.tx_hash = raw_tx.split("=")[1]
+        self.timestamp = datetime.strptime(ts.split("=")[1][:-1], '%Y-%m-%d %H:%M:%S.%f')
 
     def deserialize(self):
         return CTransaction.deserialize(bytes.fromhex(self.tx_hash))
 
 
 class TransactionHash:
-    def __init__(self, sequence: int, tx_hash: str):
+    def __init__(self, sequence: int, tx_hash : str , ts: Optional[datetime] = None):
         self.sequence = sequence
         self.tx_hash = tx_hash
+        self.timestamp = ts
 
     def encode(self):
         return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.tx_hash)
 
     def decode(self, encoded):
-        sequence, raw_tx = encoded.split(",")
+        sequence, raw_tx, ts = encoded.split(",")
         self.sequence = int(sequence.split("=")[1])
         self.tx_hash = raw_tx.split("=")[1][:-1]
+        self.timestamp = datetime.strptime(ts.split("=")[1][:-1], '%Y-%m-%d %H:%M:%S.%f')
 
     def deserialize(self):
         return self.tx_hash
