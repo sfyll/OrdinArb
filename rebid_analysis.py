@@ -1,21 +1,22 @@
+import csv
 import hashlib
 from typing import Dict, List, Union
-import os
-from encoding.decode import decode
+import os 
+from encoding.decode import BlockHash, RawTransaction, TransactionHash, decode
 
 from dataclasses import dataclass, field
-from datetime import datetime
 
-from bitcoin.core import CTransaction, CTxIn, CTxInWitness, CTxOut, Hash, lx
+from bitcoin.core import CTransaction, CTxIn,  CTxOut, lx, b2x, Hash
 from bitcoin.rpc import Proxy 
 
 @dataclass
 class TransactionData:
-    original_tx: CTransaction
+    txs: List[CTransaction]
     gas_fees: List[int] = field(default_factory=list)  # Assuming gas fees are represented as integers
     timestamps: List[int] = field(default_factory=list)  # Assuming timestamps are Unix timestamps
 
-    def add_update(self, gas_fee: int, timestamp):
+    def add_update(self, tx: CTransaction,  gas_fee: int, timestamp):
+        self.txs.append(tx)
         self.gas_fees.append(gas_fee)
         self.timestamps.append(timestamp)
 
@@ -35,42 +36,47 @@ class TxMetaData:
 
 class MempoolAnalyzer:
     def __init__(self, file_path):
-        self.client = Proxy(btc_conf_file=os.path.join(current_dir, "networking/.env"))
-        self.file_path = os.path.join(file_path, "data/mempool_drop.txt")
-        # Using a dictionary to store transactions with outputs as keys
+        self.client = Proxy(btc_conf_file=os.path.join(file_path, "networking/.env"))
+        self.input_file_path = os.path.join(file_path, "data/mempool_drop.txt")
+        self.output_file_path = os.path.join(file_path, "data/rebid_output.csv")
+        self.current_block: int = self.client.getblockcount()
         self.transactions = {}
         self.value_per_prevout_cache: Dict[str, int] = {}
         self.tx_meta_data_per_hash: Dict[str, TxMetaData] = {}
     
     #Assumes that the lines are ordered by arrival time
     def process_file(self):
-        with open(self.file_path, 'r') as file:
-            for line in file:
+        with open(self.input_file_path, 'r') as file:
+            for idx, line in enumerate(file):
+                cached_block_number = self.current_block
                 self.process_line(line.strip())
+                if cached_block_number != self.current_block:
+                    return
 
     def process_line(self, line):
         decoded = decode(line)
-        try:
-            transaction = decoded.deserialize()
-        #hacky way to bypass non implemented stuff
-        except AttributeError:
-            return
         # Check if it's a raw transaction
-        if self.is_raw_transaction(transaction):
-            self.process_transaction(transaction, decoded.timestamp.timestamp())
-        elif self.is_hash_transaction(transaction):
-            print(transaction)
+        if self.is_raw_transaction(decoded):
+            self.process_transaction(decoded.deserialize(), decoded.timestamp.timestamp())
+        elif self.is_hash_transaction(decoded):
+            pass
+        elif self.is_hash_block(decoded):
+            self.dump_block_transactions()
+            self.update_block_number()
         #    self.process_hash_transaction(transaction)
         #else:
         #    raise NotImplementedError
 
     def is_raw_transaction(self, transaction):
         # Implement logic to check if the transaction is a raw transaction
-        return isinstance(transaction, CTransaction) 
+        return isinstance(transaction, RawTransaction) 
 
     def is_hash_transaction(self, transaction):
-        return isinstance(transaction, str) and len(transaction) == 64
+        return isinstance(transaction, TransactionHash) 
     
+    def is_hash_block(self, block):
+        return isinstance(block, BlockHash) 
+   
     def process_transaction(self, transaction: CTransaction, timestamp: int):
         key = self.get_key_from_inputs(transaction.vin)
 
@@ -78,12 +84,12 @@ class MempoolAnalyzer:
             if self.can_update_gas_fee(transaction.vin):
                 input_value = self.extract_input_value(transaction)     
                 gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
-                self.transactions[key] = TransactionData(original_tx=transaction, gas_fees=[gas_fee], timestamps=[timestamp])
+                self.transactions[key] = TransactionData(txs=[transaction], gas_fees=[gas_fee], timestamps=[timestamp])
                 print(f"adding RBF transaction with gas fee {gas_fee} ")
         else:
             input_value = self.extract_input_value(transaction)     
             gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout) 
-            self.transactions[key].add_update(gas_fee, timestamp)
+            self.transactions[key].add_update(transaction, gas_fee, timestamp)
             print(f"------------------------------------------------------")
             print(f"------------------------------------------------------")
             print(f"------------------------------------------------------")
@@ -109,11 +115,7 @@ class MempoolAnalyzer:
     def process_hash_transaction(self, transaction_hash: str):
         #timestamp = self.extract_timestamp(transaction)  # Assuming you have a method to extract timestamp
     
-        print(f"{transaction_hash}")
-
         tx_meta_data = self.get_tx_meta_data(transaction_hash)
-
-        print(tx_meta_data)
 
         raise
 
@@ -165,11 +167,36 @@ class MempoolAnalyzer:
 
     def get_transactions(self):
         return self.transactions
+ 
+    def dump_block_transactions(self):
+        # Check if the file exists to determine if we need to write headers
+        file_exists = os.path.isfile(self.output_file_path)
+        
+        with open(self.output_file_path, mode='w', newline='') as file:  # 'a' opens the file in append mode
+            writer = csv.writer(file)
+            
+            # Write headers only if the file did not exist
+            if not file_exists:
+                #externalTransactionId matches what you'll find on blockexplorer
+                #internalTransactionId is generated only looking at inputs, despites generating a less strict hash than the standard procedure (and more likely to have collision)
+                writer.writerow(['externaltransactionId','internalTransactionId', 'gasFee', 'timestamp', 'blockId'])
 
+            for key, tx_data in self.transactions.items():
+                final_tx = tx_data.txs[-1]
+                for gas_fee, timestamp in zip(tx_data.gas_fees, tx_data.timestamps):
+                    # Assuming you have a method to determine the blockId and sender
+                    writer.writerow([lx(final_tx.GetTxid().hex()).hex(), key, gas_fee, timestamp, self.current_block])
+
+    def update_block_number(self):
+        latest_block = self.client.getblockcount()
+        if self.current_block + 1 == latest_block:
+            self.current_block += 1
+        else:
+            raise ValueError("Block update not sequential, not handling that case for now")
+        
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
     analyzer = MempoolAnalyzer(current_dir)
     analyzer.process_file()
-    print(analyzer.get_transactions())
 
