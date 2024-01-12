@@ -143,8 +143,6 @@ class MempoolAnalyzer:
             key = self.get_key_from_input(input.prevout.hash, input.prevout.n)
             if not key in self.value_per_prevout_cache:
                 if not input.prevout.hash.hex() in self.tx_meta_data_per_hash:
-                    print("querying the node")
-                    print(f"{(input.prevout.hash.hex(), input.prevout.n)}")
                     self.tx_meta_data_per_hash[input.prevout.hash.hex()] = self.get_tx_meta_data_from_hash(input.prevout.hash)
                 self.value_per_prevout_cache[key] = self.tx_meta_data_per_hash[input.prevout.hash.hex()].tx.vout[input.prevout.n].nValue 
             input_sum_value += self.value_per_prevout_cache[key]   
@@ -159,11 +157,12 @@ class MempoolAnalyzer:
         tx_data["txHash"] = tx_data.pop("hash")
         try:
             tx_meta_data = TxMetaData(**tx_data)
+            return tx_meta_data
         except TypeError:
             tx_data["confirmations"] = 0
             tx_data["time"] = 0
             tx_data["blocktime"] = 0
-        finally:
+            tx_meta_data = TxMetaData(**tx_data)
             return tx_meta_data
 
     def get_gas_fees_from_outputs(self, outputs: tuple[CTxOut]) -> int:
