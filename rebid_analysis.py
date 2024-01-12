@@ -102,14 +102,10 @@ class MempoolAnalyzer:
                 input_value = self.extract_input_value(transaction)     
                 gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
                 self.transactions[key] = TransactionData(txs=[transaction], gas_fees=[gas_fee], timestamps=[timestamp])
-                print(f"adding RBF transaction with gas fee {gas_fee} ")
         else:
             input_value = self.extract_input_value(transaction)     
             gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout) 
             self.transactions[key].add_update(transaction, gas_fee, timestamp)
-            print(f"------------------------------------------------------")
-            print(f"UPDATING RBF transaction with gas fee {gas_fee} !!!!")
-            print(f"------------------------------------------------------")
     
     def get_key_from_inputs(self, inputs: CTxIn):
         concatenated_hashes = ''.join([input.prevout.hash.hex() + str(input.prevout.n) for input in inputs])
@@ -184,7 +180,7 @@ class MempoolAnalyzer:
         # Check if the file exists to determine if we need to write headers
         file_exists = os.path.isfile(self.output_file_path)
         
-        with open(self.output_file_path, mode='w', newline='') as file:  # 'a' opens the file in append mode
+        with open(self.output_file_path, mode='a', newline='') as file:  # 'a' opens the file in append mode
             writer = csv.writer(file)
             
             # Write headers only if the file did not exist
@@ -199,7 +195,7 @@ class MempoolAnalyzer:
                     for gas_fee, timestamp in zip(tx_data.gas_fees, tx_data.timestamps):
                         # Assuming you have a method to determine the blockId and sender
                         writer.writerow([lx(final_tx.GetTxid().hex()).hex(), key, gas_fee, timestamp, self.current_block])
-        
+        print(f"flushing block into csv{self.current_block}") 
         self.reset_cache()
     
     def update_block_number(self):
