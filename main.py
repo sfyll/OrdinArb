@@ -1,7 +1,7 @@
 import os
 import sys
 from networking.zmq_handler.zmq_sub import ZMQHandler
-from networking.zmq_handler.zmq_handlers import PrintHandler, WriteToFileHandler, MultiHandler
+from networking.zmq_handler.zmq_handlers import PrintHandler, WriteToFileHandler, MultiHandler, RebidHandler
 
 # Get the directory of the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,15 +16,16 @@ else:
     dump_file_path = os.path.join(current_dir, default_file_name)
 
 if __name__ == '__main__':
-    message_handler = MultiHandler([
-        PrintHandler(),
-        WriteToFileHandler(dump_file_path)
-    ])
-
+    #message_handler = MultiHandler([
+    #    PrintHandler(),
+    #    WriteToFileHandler(dump_file_path)
+    #])
+    message_handler = RebidHandler(current_dir)
     print("Starting ZMQHandler")
+    
     zmqHandler = ZMQHandler(
         message_handler=message_handler,
-        sub_topic=["hashtx","rawtx","hashblock"] 
+        sub_topic=["rawtx","hashblock"] 
     )
     zmqHandler.start()
 
