@@ -190,7 +190,7 @@ class MempoolAnalyzer:
                 writer.writerow(['externaltransactionId','internalTransactionId', 'gasFee', 'timestamp', 'blockId'])
 
             for key, tx_data in self.transactions.items():
-                if len(tx_data.gas_fee) > 2:
+                if len(tx_data.gas_fees) > 2:
                     final_tx = tx_data.txs[-1]
                     for gas_fee, timestamp in zip(tx_data.gas_fees, tx_data.timestamps):
                         # Assuming you have a method to determine the blockId and sender
