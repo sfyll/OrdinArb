@@ -10,7 +10,7 @@ from bitcoin.core import CTransaction
 class RawTransaction:
     def __init__(self, sequence: int, raw_tx: str , ts: Optional[datetime] = None):
         self.sequence = sequence
-        self.tx_hash = raw_tx
+        self.raw_tx = raw_tx
         self.timestamp = ts
 
     def encode(self):
@@ -19,11 +19,11 @@ class RawTransaction:
     def decode(self, encoded):
         sequence, raw_tx, ts = encoded.split(",")
         self.sequence = int(sequence.split("=")[1])
-        self.tx_hash = raw_tx.split("=")[1]
+        self.raw_tx = raw_tx.split("=")[1]
         self.timestamp = datetime.strptime(ts.split("=")[1][:-1], '%Y-%m-%d %H:%M:%S.%f')
 
     def deserialize(self):
-        return CTransaction.deserialize(bytes.fromhex(self.tx_hash))
+        return CTransaction.deserialize(bytes.fromhex(self.raw_tx))
 
 
 class TransactionHash:
