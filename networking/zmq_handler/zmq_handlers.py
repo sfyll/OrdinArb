@@ -1,5 +1,6 @@
 import os
 
+from rebid_analysis import MempoolAnalyzer
 
 class PrintHandler():
     def __init__(self):
@@ -29,3 +30,10 @@ class MultiHandler():
     def handle(self, message):
         for handler in self.handlers:
             handler.handle(message)
+
+class RebidHandler():
+    def __init__(self, root_directory) -> None:
+        self.handler = MempoolAnalyzer(root_directory) 
+
+    def handle(self, message):
+        self.handler.handle(message) 
