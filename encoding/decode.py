@@ -14,7 +14,7 @@ class RawTransaction:
         self.timestamp = ts
 
     def encode(self):
-        return "RawTransaction(sequence={}, raw_tx={})".format(self.sequence, self.tx_hash)
+        return "RawTransaction(sequence={}, raw_tx={}, timestamp={})".format(self.sequence, self.tx_hash, self.timestamp)
 
     def decode(self, encoded):
         sequence, raw_tx, ts = encoded.split(",")
@@ -33,7 +33,7 @@ class TransactionHash:
         self.timestamp = ts
 
     def encode(self):
-        return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.tx_hash)
+        return "TransactionHash(sequence={}, tx_hash={}, timestamp={})".format(self.sequence, self.tx_hash, self.timestamp)
 
     def decode(self, encoded):
         sequence, raw_tx, ts = encoded.split(",")
@@ -44,6 +44,23 @@ class TransactionHash:
     def deserialize(self):
         return self.tx_hash
 
+class BlockHash:
+    def __init__(self, sequence: int, block_hash : str , ts: Optional[datetime] = None):
+        self.sequence = sequence
+        self.block_hash = block_hash
+        self.timestamp = ts
+
+    def encode(self):
+        return "BlockHash(sequence={}, block_hash={}, timestamp={})".format(self.sequence, self.block_hash, self.timestamp)
+
+    def decode(self, encoded):
+        sequence, raw_tx, ts = encoded.split(",")
+        self.sequence = int(sequence.split("=")[1])
+        self.block_hash = raw_tx.split("=")[1][:-1]
+        self.timestamp = datetime.strptime(ts.split("=")[1][:-1], '%Y-%m-%d %H:%M:%S.%f')
+
+    def deserialize(self):
+        return self.block_hash
 
 class SequenceHash:
     def __init__(self, sequence: int, tx_hash: str, label: str, mempool_sequence: int):
@@ -53,7 +70,7 @@ class SequenceHash:
         self.mempool_sequence = mempool_sequence
 
     def encode(self):
-        return "TransactionHash(sequence={}, tx_hash={})".format(self.sequence, self.tx_hash)
+        return "TransactionHash(sequence={}, tx_hash={}, timestamp={})".format(self.sequence, self.tx_hash, self.timestamp)
 
     def decode(self, encoded):
         sequence, raw_tx, label, mempool_sequence = encoded.split(",")
@@ -78,7 +95,9 @@ def decode(encoded: str):
     elif encoded.startswith("SequenceNumber"): 
         return ""
     elif encoded.startswith("BlockHash"):
-        return ""
+        block = BlockHash(0, "")
+        block.decode(encoded)
+        return block
     elif encoded.startswith("RawBlock"):
         return ""
     else:
