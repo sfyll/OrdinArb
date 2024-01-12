@@ -155,9 +155,16 @@ class MempoolAnalyzer:
             tx_data = self.client.getrawtransaction(lx(tx_hash), True)
         elif isinstance(tx_hash, bytes):
             tx_data = self.client.getrawtransaction(tx_hash, True)
+        #sometimes block related fields are missing, and blockhash is none, to investigate
         tx_data["txHash"] = tx_data.pop("hash")
-
-        return TxMetaData(**tx_data)
+        try:
+            tx_meta_data = TxMetaData(**tx_data)
+        except TypeError:
+            tx_data["confirmations"] = 0
+            tx_data["time"] = 0
+            tx_data["blocktime"] = 0
+        finally:
+            return tx_meta_data
 
     def get_gas_fees_from_outputs(self, outputs: tuple[CTxOut]) -> int:
         return sum(output.nValue for output in outputs)
