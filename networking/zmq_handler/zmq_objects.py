@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from enum import Enum
 
@@ -39,37 +40,49 @@ class ZMQMessage(ABC):
 class TransactionHash(ZMQMessage):
     sequence: int
     tx_hash: str
-
+    timestamp: datetime = field(default_factory=datetime.now)
+    
     def message_type(self):
         return "Transaction Hash"
 
+    def __post_init__(self):
+        super().__init__()
 
 @dataclass
 class BlockHash(ZMQMessage):
     sequence: int
     block_hash: str
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def message_type(self):
         return "Block Hash"
 
+    def __post_init__(self):
+        super().__init__()
 
 @dataclass
 class RawTransaction(ZMQMessage):
     sequence: int
     raw_tx: str
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def message_type(self):
         return "Raw Transaction"
 
+    def __post_init__(self):
+        super().__init__()
 
 @dataclass
 class RawBlock(ZMQMessage):
     sequence: int
     raw_block: str
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def message_type(self):
         return "Raw Block"
 
+    def __post_init__(self):
+        super().__init__()
 
 @dataclass
 class SequenceNumber(ZMQMessage):
@@ -77,6 +90,10 @@ class SequenceNumber(ZMQMessage):
     seq_hash: Label
     label: str
     mempool_sequence: int
+    timestamp: datetime = field(default_factory=datetime.now)
 
     def message_type(self):
         return "Sequence Number"
+
+    def __post_init__(self):
+        super().__init__()
