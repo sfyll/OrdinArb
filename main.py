@@ -24,7 +24,7 @@ if __name__ == '__main__':
     print("Starting ZMQHandler")
     zmqHandler = ZMQHandler(
         message_handler=message_handler,
-        sub_topic=["hashtx","rawtx"] 
+        sub_topic=["hashtx","rawtx","hashblock"] 
     )
     zmqHandler.start()
 
