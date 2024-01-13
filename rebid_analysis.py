@@ -1,6 +1,6 @@
 import csv
 import hashlib
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 import os 
 from encoding.decode import BlockHash, RawTransaction, TransactionHash, decode
 from networking.zmq_handler.zmq_objects import BlockHash as ZmqBlockHash, RawTransaction as ZmqRawTransaction, TransactionHash as ZmqTransactionHash
@@ -44,6 +44,7 @@ class MempoolAnalyzer:
         self.transactions = {}
         self.value_per_prevout_cache: Dict[str, int] = {}
         self.tx_meta_data_per_hash: Dict[str, TxMetaData] = {}
+        self.unkown_tx_counter = 0
     
     
     def handle(self, message):
@@ -99,13 +100,19 @@ class MempoolAnalyzer:
 
         if key not in self.transactions:
             if self.can_update_gas_fee(transaction.vin):
-                input_value = self.extract_input_value(transaction)     
-                gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
-                self.transactions[key] = TransactionData(txs=[transaction], gas_fees=[gas_fee], timestamps=[timestamp])
+                input_value = self.extract_input_value(transaction)
+                if input_value == 0:
+                    return
+                else:
+                    gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
+                    self.transactions[key] = TransactionData(txs=[transaction], gas_fees=[gas_fee], timestamps=[timestamp])
         else:
-            input_value = self.extract_input_value(transaction)     
-            gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout) 
-            self.transactions[key].add_update(transaction, gas_fee, timestamp)
+            input_value = self.extract_input_value(transaction)
+            if input_value == 0:
+                return
+            else:
+                gas_fee = input_value - self.get_gas_fees_from_outputs(transaction.vout)
+                self.transactions[key].add_update(transaction, gas_fee, timestamp)
     
     def get_key_from_inputs(self, inputs: CTxIn):
         concatenated_hashes = ''.join([input.prevout.hash.hex() + str(input.prevout.n) for input in inputs])
@@ -139,16 +146,25 @@ class MempoolAnalyzer:
             key = self.get_key_from_input(input.prevout.hash, input.prevout.n)
             if not key in self.value_per_prevout_cache:
                 if not input.prevout.hash.hex() in self.tx_meta_data_per_hash:
-                    self.tx_meta_data_per_hash[input.prevout.hash.hex()] = self.get_tx_meta_data_from_hash(input.prevout.hash)
+                    tx_meta_data = self.get_tx_meta_data_from_hash(input.prevout.hash)
+                    if tx_meta_data is None:
+                        return 0
+                    else:
+                        self.tx_meta_data_per_hash[input.prevout.hash.hex()] = tx_meta_data
                 self.value_per_prevout_cache[key] = self.tx_meta_data_per_hash[input.prevout.hash.hex()].tx.vout[input.prevout.n].nValue 
             input_sum_value += self.value_per_prevout_cache[key]   
         return input_sum_value
     
-    def get_tx_meta_data_from_hash(self, tx_hash: Union[str, bytes]):
-        if isinstance(tx_hash, str): 
-            tx_data = self.client.getrawtransaction(lx(tx_hash), True)
-        elif isinstance(tx_hash, bytes):
-            tx_data = self.client.getrawtransaction(tx_hash, True)
+    def get_tx_meta_data_from_hash(self, tx_hash: Union[str, bytes]) -> Optional[TxMetaData]:
+        try:
+            if isinstance(tx_hash, str): 
+                tx_data = self.client.getrawtransaction(lx(tx_hash), True)
+            elif isinstance(tx_hash, bytes):
+                tx_data = self.client.getrawtransaction(tx_hash, True)
+        #missing lots of transaction, for these we'll get an IndexError
+        except IndexError:
+            self.unkown_tx_counter += 1
+            return None
         #sometimes block related fields are missing, and blockhash is none, to investigate
         tx_data["txHash"] = tx_data.pop("hash")
         try:
@@ -196,6 +212,7 @@ class MempoolAnalyzer:
                         # Assuming you have a method to determine the blockId and sender
                         writer.writerow([lx(final_tx.GetTxid().hex()).hex(), key, gas_fee, timestamp, self.current_block])
         print(f"flushing block into csv{self.current_block}") 
+        print(f"amount of missed tx due to lack of memory: {self.unkown_tx_counter}") 
         self.reset_cache()
     
     def update_block_number(self):
@@ -209,7 +226,7 @@ class MempoolAnalyzer:
         self.transactions = {}
         self.value_per_prevout_cache: Dict[str, int] = {}
         self.tx_meta_data_per_hash: Dict[str, TxMetaData] = {}
-
+        self.unkown_tx_counter = 0
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
