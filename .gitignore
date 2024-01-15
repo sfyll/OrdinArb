@@ -3,3 +3,4 @@ __pycache__
 dump
 .venv
 data/
+!data/rebid_output.csv
