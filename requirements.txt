@@ -6,3 +6,6 @@ python-bitcoinlib==0.12.2
 pyzmq==25.1.2
 requests==2.31.0
 urllib3==2.1.0
+jupyter==1.0.0
+matplotlib==3.8.2
+pandas==2.4.1
