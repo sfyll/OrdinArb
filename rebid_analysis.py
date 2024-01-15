@@ -52,17 +52,14 @@ class MempoolAnalyzer:
             transaction = RawTransaction(message.sequence, message.raw_tx, message.timestamp)
             self.process_transaction(transaction.deserialize(), transaction.timestamp.timestamp())
         elif self.is_zmq_hash_block(message):
-            self.dump_block_transactions()
             self.update_block_number()
+            self.dump_block_transactions()
 
     #Assumes that the lines are ordered by arrival time
     def process_file(self):
         with open(self.input_file_path, 'r') as file:
-            for idx, line in enumerate(file):
-                cached_block_number = self.current_block
+            for line in file:
                 self.process_line(line.strip())
-                if cached_block_number != self.current_block:
-                    return
 
     def process_line(self, line):
         decoded = decode(line)
@@ -72,8 +69,8 @@ class MempoolAnalyzer:
         elif self.is_hash_transaction(decoded):
             pass
         elif self.is_hash_block(decoded):
-            self.dump_block_transactions()
             self.update_block_number()
+            self.dump_block_transactions()
 
     def is_zmq_raw_transaction(self, transaction):
         # Implement logic to check if the transaction is a raw transaction
