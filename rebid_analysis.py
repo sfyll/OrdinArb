@@ -200,7 +200,7 @@ class MempoolAnalyzer:
             if not file_exists:
                 #externalTransactionId matches what you'll find on blockexplorer
                 #internalTransactionId is generated only looking at inputs, despites generating a less strict hash than the standard procedure (and more likely to have collision)
-                writer.writerow(['externaltransactionId','internalTransactionId', 'gasFee', 'timestamp', 'blockId'])
+                writer.writerow(['externalTransactionId','internalTransactionId', 'gasFee', 'timestamp', 'blockId'])
 
             for key, tx_data in self.transactions.items():
                 if len(tx_data.gas_fees) > 2:
