@@ -31,3 +31,5 @@ The default message handlers are:
 
 2. **Run main.py**:
 ```python main.py```
+
+Or simply ```./run_mempool_analyzer.sh```
